@@ -1,6 +1,7 @@
-import sqlite3
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+from database import conectar_banco, criar_tabelas
 
 app = FastAPI(
     title="API de Gerenciamento - Projeto A3",
@@ -10,29 +11,15 @@ app = FastAPI(
 
 
 # ==========================================
-# 1. CAMADA DE BANCO DE DADOS (SQLite)
+# 1. BANCO DE DADOS (database.py)
 # ==========================================
-def get_db_connection():
-    # Cria o arquivo banco_a3.db na mesma pasta do projeto
-    conn = sqlite3.connect("banco_a3.db")
-    conn.row_factory = sqlite3.Row  # Permite acessar colunas por nome
-    return conn
-
+# Cria e conecta ao banco de dados
+conectar_banco()
 
 # Cria a tabela automaticamente ao iniciar a API
 @app.on_event("startup")
 def startup_event():
-    conn = get_db_connection()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS registros (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT NOT NULL,
-            descricao TEXT,
-            ativo BOOLEAN DEFAULT TRUE
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    criar_tabelas()
 
 
 # ==========================================
@@ -59,7 +46,7 @@ def criar_registro(registro: RegistroBase):
         raise HTTPException(status_code=400, detail="O título não pode estar em branco.")
 
     try:
-        conn = get_db_connection()
+        conn = conectar_banco()
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO registros (titulo, descricao, ativo) VALUES (?, ?, ?)",
@@ -77,7 +64,7 @@ def criar_registro(registro: RegistroBase):
 
 @app.get("/registros", response_model=list[RegistroResponse], status_code=200)
 def listar_registros():
-    conn = get_db_connection()
+    conn = conectar_banco()
     registros = conn.execute("SELECT * FROM registros").fetchall()
     conn.close()
     return [dict(reg) for reg in registros]
@@ -85,7 +72,7 @@ def listar_registros():
 
 @app.get("/registros/{registro_id}", response_model=RegistroResponse, status_code=200)
 def buscar_registro(registro_id: int):
-    conn = get_db_connection()
+    conn = conectar_banco()
     registro = conn.execute("SELECT * FROM registros WHERE id = ?", (registro_id,)).fetchone()
     conn.close()
 
@@ -98,7 +85,7 @@ def buscar_registro(registro_id: int):
 
 @app.put("/registros/{registro_id}", response_model=RegistroResponse, status_code=200)
 def atualizar_registro(registro_id: int, registro: RegistroBase):
-    conn = get_db_connection()
+    conn = conectar_banco()
     existente = conn.execute("SELECT * FROM registros WHERE id = ?", (registro_id,)).fetchone()
 
     if existente is None:
@@ -119,7 +106,7 @@ def atualizar_registro(registro_id: int, registro: RegistroBase):
 
 @app.delete("/registros/{registro_id}", status_code=200)
 def deletar_registro(registro_id: int):
-    conn = get_db_connection()
+    conn = conectar_banco()
     existente = conn.execute("SELECT * FROM registros WHERE id = ?", (registro_id,)).fetchone()
 
     if existente is None:
