@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 
 from database import conectar_banco, criar_tabelas
+from models import RegistroBase, RegistroResponse
 
 app = FastAPI(
     title="API de Gerenciamento - Projeto A3",
@@ -20,19 +20,6 @@ conectar_banco()
 @app.on_event("startup")
 def startup_event():
     criar_tabelas()
-
-
-# ==========================================
-# 2. CAMADA DE MODELOS (Pydantic)
-# ==========================================
-class RegistroBase(BaseModel):
-    titulo: str
-    descricao: str | None = None
-    ativo: bool = True
-
-
-class RegistroResponse(RegistroBase):
-    id: int
 
 
 # ==========================================
